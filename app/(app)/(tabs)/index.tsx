@@ -75,6 +75,7 @@ export default function Index() {
             setPosts([post, ...posts]);
             storeData("posts", JSON.stringify([post, ...posts]));
             setIsModalOpen(false);
+            console.log(post);
           }}
           closeModal={() => setIsModalOpen(false)}
         />

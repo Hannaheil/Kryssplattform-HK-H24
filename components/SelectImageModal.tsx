@@ -38,6 +38,7 @@ export default function SelectImageModal({
 
   let camera: CameraView | null = null;
 
+  //Tar async bilde 
   const captureImage = async () => {
     if (camera) {
       const image = await camera.takePictureAsync();
@@ -70,6 +71,7 @@ export default function SelectImageModal({
       <CameraView
         style={styles.camera}
         facing={"back"}
+        // Referanse til kamera view 
         ref={(r) => (camera = r)}
       >
         <View style={styles.buttonContainer}>

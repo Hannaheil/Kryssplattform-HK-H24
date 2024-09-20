@@ -1,5 +1,5 @@
 import { PostData } from "@/utils/postData";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -13,6 +13,8 @@ import {
 import { EvilIcons } from "@expo/vector-icons";
 import SelectImageModal from "./SelectImageModal";
 
+import * as Location from "expo-location";
+
 type PostFormProps = {
   addNewPost: (post: PostData) => void;
   closeModal: () => void;
@@ -24,6 +26,54 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
   const [hashtagText, setHashtagText] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
+  const [location, setLocation] = useState<Location.LocationGeocodedAddress | null>(
+    null
+  );
+
+  //Use ref: lik use state uten at den bygger data på nytt 
+const postCoordinatesData = useRef<Location.LocationObjectCoords | null>(null);
+
+  //Kan ikke hente adresse uten at brukeren faktsik har godtkjent det
+
+  useEffect(() => {
+    (async () => {
+      //Background: bruker location hele tiden. Background er kun når appen er i bruk
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setStatusText("Tilatelse til å bruke lokasjon ble ikke gitt");
+        return;
+      }
+    })();
+  }, []);
+
+  const getLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      setStatusText("Tilatelse til å bruke lokasjon ble ikke gitt");
+      return;
+    }
+
+    let location = await Location.getCurrentPositionAsync();
+    //henter data fra useRef
+    postCoordinatesData.current = location.coords;
+
+    const locationAddress = await Location.reverseGeocodeAsync({
+      latitude: location.coords.latitude, 
+      longitude: location.coords.longitude,
+    });
+    
+    setLocation(locationAddress[0]);
+  }
+
+  getLocation();
+
+  let text = "Dette blir en kul geolocasjon";
+  if (statusText) {
+    text = statusText;
+  } else if (location) {
+    text = JSON.stringify(location);
+  }
 
   return (
     <View style={styles.mainContainer}>
@@ -34,7 +84,10 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
         <View style={styles.contentContainer}>
           <Modal visible={isCameraOpen} animationType="slide">
             <SelectImageModal
-              closeModal={() => setIsCameraOpen(false)}
+              closeModal={() => {
+                setIsCameraOpen(false);
+                getLocation();
+              }}
               setImage={setImage}
             />
           </Modal>
@@ -52,6 +105,7 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
               <EvilIcons name="image" size={80} color="gray" />
             )}
           </Pressable>
+          <Text>{`${location?.street} ${location?.streetNumber} - ${location?.city}, ${location?.country}`}</Text>
           <View style={styles.textFieldContainer}>
             <Text style={styles.text}>Tittel</Text>
             <TextInput
@@ -95,7 +149,10 @@ export default function PostForm({ addNewPost, closeModal }: PostFormProps) {
                   author: "Kul student",
                   isLiked: false,
                   imageURL: image || "",
+                  postCoordinates:  postCoordinatesData.current,
                 });
+                
+
                 setTitleText("");
                 setDescriptionText("");
                 setHashtagText("");
